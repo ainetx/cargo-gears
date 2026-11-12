@@ -1,0 +1,16 @@
+warning: `AccessScope::allow_all()` in a function that obtained a PDP-compiled scope (DE0710)
+  --> $DIR/bad_allow_all_after_authorization.rs:20:17
+   |
+LL |     find_by_id(&AccessScope::allow_all(), parent_id);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the PDP-compiled scope is obtained here
+  --> $DIR/bad_allow_all_after_authorization.rs:17:17
+   |
+LL |     let scope = authorize(parent_id).await?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use the PDP-compiled scope; if this read is a structural precondition that must see rows outside the caller's scope, document it with `#[expect(..., reason = "...")]`
+   = note: `#[warn(de0710_allow_all_after_authorization)]` on by default
+
+warning: 1 warning emitted
+

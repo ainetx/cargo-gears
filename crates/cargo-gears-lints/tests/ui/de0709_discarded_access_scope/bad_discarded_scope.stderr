@@ -1,0 +1,71 @@
+warning: PDP-compiled `AccessScope` is bound to a discarded name (DE0709)
+  --> $DIR/bad_discarded_scope.rs:18:5
+   |
+LL |     let _scope = authorize(parent_id).await?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+   = note: `#[warn(de0709_discarded_access_scope)]` on by default
+
+warning: `AccessScope::allow_all()` in a function that obtained a PDP-compiled scope (DE0710)
+  --> $DIR/bad_discarded_scope.rs:19:17
+   |
+LL |     find_by_id(&AccessScope::allow_all(), parent_id);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the PDP-compiled scope is obtained here
+  --> $DIR/bad_discarded_scope.rs:18:18
+   |
+LL |     let _scope = authorize(parent_id).await?;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use the PDP-compiled scope; if this read is a structural precondition that must see rows outside the caller's scope, document it with `#[expect(..., reason = "...")]`
+   = note: `#[warn(de0710_allow_all_after_authorization)]` on by default
+
+warning: PDP-compiled `AccessScope` is bound to a discarded name (DE0709)
+  --> $DIR/bad_discarded_scope.rs:25:5
+   |
+LL |     let _ = authorize(id).await?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+
+warning: PDP-compiled `AccessScope` is dropped as a statement (DE0709)
+  --> $DIR/bad_discarded_scope.rs:31:5
+   |
+LL |     authorize(id).await?;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+
+warning: PDP-compiled `AccessScope` is matched without being bound (DE0709)
+  --> $DIR/bad_discarded_scope.rs:38:9
+   |
+LL |         Ok(_) => true,
+   |         ^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+
+warning: PDP-compiled `AccessScope` is matched without being bound (DE0709)
+  --> $DIR/bad_discarded_scope.rs:45:12
+   |
+LL |     if let Ok(_) = authorize(id).await {
+   |            ^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+
+warning: PDP-compiled `AccessScope` is reduced to a boolean (DE0709)
+  --> $DIR/bad_discarded_scope.rs:54:5
+   |
+LL |     authorize(id).await.is_ok()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+
+warning: 7 warnings emitted
+

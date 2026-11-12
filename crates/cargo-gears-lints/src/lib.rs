@@ -36,6 +36,8 @@ mod de07_security {
     pub(crate) mod de0706_no_direct_sqlx;
     pub(crate) mod de0707_drop_zeroize;
     pub(crate) mod de0708_no_non_fips_hasher;
+    pub(crate) mod de0709_discarded_access_scope;
+    pub(crate) mod de0710_allow_all_after_authorization;
 }
 
 mod de08_rest_api_conventions {
@@ -91,6 +93,8 @@ pub fn register_lints(sess: &rustc_session::Session, lint_store: &mut rustc_lint
         de07_security::de0706_no_direct_sqlx::DE0706_NO_DIRECT_SQLX,
         de07_security::de0707_drop_zeroize::DE0707_DROP_ZEROIZE,
         de07_security::de0708_no_non_fips_hasher::DE0708_NO_NON_FIPS_HASHER,
+        de07_security::de0709_discarded_access_scope::DE0709_DISCARDED_ACCESS_SCOPE,
+        de07_security::de0710_allow_all_after_authorization::DE0710_ALLOW_ALL_AFTER_AUTHORIZATION,
         de08_rest_api_conventions::de0801_api_endpoint_version::DE0801_API_ENDPOINT_VERSION,
         de08_rest_api_conventions::de0802_use_odata_ext::DE0802_USE_ODATA_EXT,
         de08_rest_api_conventions::de0803_api_snake_case::DE0803_API_SNAKE_CASE,
@@ -180,6 +184,14 @@ pub fn register_lints(sess: &rustc_session::Session, lint_store: &mut rustc_lint
     }));
     lint_store.register_late_lint_pass(Box::new(|_| {
         Box::new(de07_security::de0707_drop_zeroize::De0707DropZeroize)
+    }));
+    lint_store.register_late_lint_pass(Box::new(|_| {
+        Box::new(de07_security::de0709_discarded_access_scope::De0709DiscardedAccessScope)
+    }));
+    lint_store.register_late_lint_pass(Box::new(|_| {
+        Box::new(
+            de07_security::de0710_allow_all_after_authorization::De0710AllowAllAfterAuthorization,
+        )
     }));
     lint_store.register_late_lint_pass(Box::new(|_| {
         Box::new(de08_rest_api_conventions::de0801_api_endpoint_version::De0801ApiEndpointVersion)
@@ -297,6 +309,16 @@ mod tests {
             "de0503_plugin_client_suffix",
         ),
         ("DE0504", "Client trait", "de0504_client_versioning"),
+        (
+            "DE0709",
+            "discarded access scope",
+            "de0709_discarded_access_scope",
+        ),
+        (
+            "DE0710",
+            "allow_all after authorization",
+            "de0710_allow_all_after_authorization",
+        ),
         ("DE0706", "sqlx", "de0706_no_direct_sqlx"),
         ("DE0707", "manual zeroing", "de0707_drop_zeroize"),
         ("DE0708", "non-FIPS hasher", "de0708_no_non_fips_hasher"),

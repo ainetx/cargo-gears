@@ -258,6 +258,22 @@ name = "de0708_no_non_fips_hasher-good_non_banned_import"
 path = "tests/ui/de0708_no_non_fips_hasher/good_non_banned_import.rs"
 
 [[example]]
+name = "de0709_discarded_access_scope-bad_discarded_scope"
+path = "tests/ui/de0709_discarded_access_scope/bad_discarded_scope.rs"
+
+[[example]]
+name = "de0709_discarded_access_scope-good_applied_scope"
+path = "tests/ui/de0709_discarded_access_scope/good_applied_scope.rs"
+
+[[example]]
+name = "de0710_allow_all_after_authorization-bad_allow_all_after_authorization"
+path = "tests/ui/de0710_allow_all_after_authorization/bad_allow_all_after_authorization.rs"
+
+[[example]]
+name = "de0710_allow_all_after_authorization-good_no_authorization"
+path = "tests/ui/de0710_allow_all_after_authorization/good_no_authorization.rs"
+
+[[example]]
 name = "de0801_api_endpoint_version-valid_endpoints"
 path = "tests/ui/de0801_api_endpoint_version/valid_endpoints.rs"
 

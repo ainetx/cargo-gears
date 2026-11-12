@@ -516,6 +516,8 @@ pub fn test_comment_annotations_match_stderr(
             if line.starts_with("error:") || line.starts_with("warning:") {
                 current_error_is_ours = line.contains(&lint_tag);
             }
+            // Only the primary span (the first `-->` after the header) locates the
+            // diagnostic; later `-->` lines belong to `span_note`s.
             if current_error_is_ours
                 && line.contains("-->")
                 && line.contains(".rs:")
@@ -527,6 +529,7 @@ pub fn test_comment_annotations_match_stderr(
                 {
                     error_lines.insert(line_num);
                 }
+                current_error_is_ours = false;
             }
         }
 
