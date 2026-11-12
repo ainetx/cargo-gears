@@ -30,4 +30,12 @@ async fn documented(id: u32) -> Result<(), Denied> {
     Ok(())
 }
 
+async fn prefetch_then_authorize(id: u32) -> Result<(), Denied> {
+    // Should not trigger DE0710 - allow_all after authorization: prefetch before the PDP call
+    find_by_id(&AccessScope::allow_all(), id);
+    let scope = authorize(id).await?;
+    find_by_id(&scope, id);
+    Ok(())
+}
+
 fn main() {}

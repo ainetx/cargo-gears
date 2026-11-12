@@ -11,8 +11,10 @@ use super::de0709_discarded_access_scope::{awaited_scope, is_access_scope};
 dylint_linting::declare_late_lint! {
     /// ### What it does
     ///
-    /// Detects `AccessScope::allow_all()` in a function body that also awaits a
-    /// PDP-compiled `AccessScope`.
+    /// Detects `AccessScope::allow_all()` used after a PDP-compiled
+    /// `AccessScope` has been awaited in the same function body. A prefetch
+    /// with `allow_all()` *before* the PDP call (loading the row to build the
+    /// PDP request) is not flagged.
     ///
     /// ### Why is this bad?
     ///
@@ -85,7 +87,13 @@ impl<'tcx> LateLintPass<'tcx> for De0710AllowAllAfterAuthorization {
         let Some(authorization) = awaited_scope(cx, typeck, body.value) else {
             return;
         };
-        for span in allow_all_calls(cx, body.value) {
+        // Reading a row with `allow_all` *before* the PDP call is the documented
+        // prefetch pattern (load the row to build the PDP request); only an
+        // unrestricted read or write after the scope is in hand bypasses it.
+        for span in allow_all_calls(cx, body.value)
+            .into_iter()
+            .filter(|span| span.lo() > authorization.lo())
+        {
             span_lint_and_then(
                 cx,
                 DE0710_ALLOW_ALL_AFTER_AUTHORIZATION,
