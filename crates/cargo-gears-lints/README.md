@@ -45,6 +45,8 @@ Custom [dylint](https://github.com/trailofbits/dylint) linters enforcing archite
 | DE0706 | No Direct SQLx | Direct `sqlx` usage is forbidden; use Sea-ORM / SecORM abstractions |
 | DE0707 | Drop Zeroize | Manual byte-zeroing in `Drop` impls must use `zeroize` or `secrecy` |
 | DE0708 | No Non-FIPS Hasher | Direct `sha2`/`sha1`/`md5` imports are forbidden; allow-list configurable via `dylint.toml` |
+| DE0709 | Discarded Access Scope | An awaited PDP `AccessScope` must be applied, not bound to `_`, dropped, matched as `Ok(_)` or reduced to `.is_ok()` (warn) |
+| DE0710 | `allow_all()` After Authorization | No `AccessScope::allow_all()` after a PDP scope was obtained in the same function; prefetch before the PDP call is allowed (warn) |
 
 ### DE08xx — REST API Conventions
 
