@@ -67,5 +67,14 @@ LL |     authorize(id).await.is_ok()
    = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
    = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
 
-warning: 7 warnings emitted
+warning: PDP-compiled `AccessScope` is matched without being bound (DE0709)
+  --> $DIR/bad_discarded_scope.rs:59:9
+   |
+LL |     let Ok(_) = authorize(id).await else {
+   |         ^^^^^
+   |
+   = help: apply the scope to the resource the request names (e.g. `repo.find_by_id(&scope, id)`), or check the id against it, instead of relying on the bare allow/deny
+   = note: a PDP allow is usually constrained to the caller's own tenant/subtree; the scope is what ties it to the target
+
+warning: 8 warnings emitted
 

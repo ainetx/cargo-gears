@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables)]
+#![allow(dead_code, unused_variables, unknown_lints)]
 
 pub struct AccessScope;
 impl AccessScope {
@@ -49,6 +49,25 @@ mod tests {
     async fn in_tests() {
         let _scope = super::authorize(1).await;
     }
+}
+
+fn apply_scope(_scope: AccessScope) -> Result<(), Denied> {
+    Ok(())
+}
+
+async fn applied_then_checked(id: u32) -> Result<bool, Denied> {
+    // Should not trigger DE0709 - discarded access scope: `.is_ok()` inspects `apply_scope`'s result
+    Ok(apply_scope(authorize(id).await?).is_ok())
+}
+
+async fn statement_level_expect(id: u32) -> Result<(), Denied> {
+    #[expect(
+        de0709_discarded_access_scope,
+        reason = "gate-only check on a global resource"
+    )]
+    // Should not trigger DE0709 - discarded access scope: suppressed on the statement
+    let _scope = authorize(id).await?;
+    Ok(())
 }
 
 fn main() {}

@@ -38,4 +38,27 @@ async fn prefetch_then_authorize(id: u32) -> Result<(), Denied> {
     Ok(())
 }
 
+async fn prefetch_in_arguments(id: u32) -> Result<(), Denied> {
+    // Should not trigger DE0710 - allow_all after authorization: prefetch inside the PDP call's arguments
+    let scope = authorize({
+        find_by_id(&AccessScope::allow_all(), id);
+        id
+    })
+    .await?;
+    find_by_id(&scope, id);
+    Ok(())
+}
+
+async fn statement_level_expect(id: u32) -> Result<(), Denied> {
+    let scope = authorize(id).await?;
+    find_by_id(&scope, id);
+    #[expect(
+        de0710_allow_all_after_authorization,
+        reason = "structural read of a row proven in scope"
+    )]
+    // Should not trigger DE0710 - allow_all after authorization: suppressed on the statement
+    find_by_id(&AccessScope::allow_all(), id);
+    Ok(())
+}
+
 fn main() {}

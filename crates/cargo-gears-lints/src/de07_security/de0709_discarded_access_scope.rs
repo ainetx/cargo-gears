@@ -2,10 +2,10 @@ extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_span;
 
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, Expr, ExprKind, MatchSource, Pat, PatKind, StmtKind};
+use rustc_hir::{self as hir, Expr, ExprKind, HirId, MatchSource, Pat, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty, TypeckResults};
 use rustc_span::Span;
@@ -142,11 +142,23 @@ struct ScopeVisitor<'a, 'tcx> {
     typeck: &'tcx TypeckResults<'tcx>,
 }
 
-impl ScopeVisitor<'_, '_> {
-    fn report(&self, span: Span, what: &str) {
-        span_lint_and_then(
+impl<'tcx> ScopeVisitor<'_, 'tcx> {
+    /// `expr` itself carries a scope (not merely contains one deeper down, as in
+    /// `apply(authorize(id).await?).is_ok()`) and that scope comes from an await.
+    fn holds_awaited_scope(&self, expr: &'tcx Expr<'tcx>) -> bool {
+        self.typeck
+            .expr_ty_opt(expr)
+            .is_some_and(|ty| carries_access_scope(self.cx, ty))
+            && awaited_scope(self.cx, self.typeck, expr).is_some()
+    }
+
+    /// Emitted at `hir_id` so `#[expect]` / `#[allow]` on the enclosing
+    /// statement or expression applies.
+    fn report(&self, hir_id: HirId, span: Span, what: &str) {
+        span_lint_hir_and_then(
             self.cx,
             DE0709_DISCARDED_ACCESS_SCOPE,
+            hir_id,
             span,
             format!("PDP-compiled `AccessScope` is {what} (DE0709)"),
             |diag| {
@@ -168,19 +180,20 @@ impl<'tcx> hir::intravisit::Visitor<'tcx> for ScopeVisitor<'_, 'tcx> {
             StmtKind::Let(local)
                 if let Some(init) = local.init
                     && is_discarding_binding(local.pat)
-                    && carries_access_scope(self.cx, self.typeck.pat_ty(local.pat))
-                    && awaited_scope(self.cx, self.typeck, init).is_some() =>
+                    && self.holds_awaited_scope(init) =>
             {
-                self.report(local.span, "bound to a discarded name");
+                self.report(local.hir_id, local.span, "bound to a discarded name");
             }
-            StmtKind::Semi(expr)
-                if self
-                    .typeck
-                    .expr_ty_opt(expr)
-                    .is_some_and(|ty| carries_access_scope(self.cx, ty))
-                    && awaited_scope(self.cx, self.typeck, expr).is_some() =>
+            // `let Ok(_) = authorize(..).await else { .. };`
+            StmtKind::Let(local)
+                if let Some(init) = local.init
+                    && discards_payload(self.cx, local.pat)
+                    && self.holds_awaited_scope(init) =>
             {
-                self.report(stmt.span, "dropped as a statement");
+                self.report(local.hir_id, local.pat.span, "matched without being bound");
+            }
+            StmtKind::Semi(expr) if self.holds_awaited_scope(expr) => {
+                self.report(stmt.hir_id, stmt.span, "dropped as a statement");
             }
             _ => {}
         }
@@ -190,27 +203,31 @@ impl<'tcx> hir::intravisit::Visitor<'tcx> for ScopeVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
             ExprKind::Match(scrutinee, arms, MatchSource::Normal)
-                if awaited_scope(self.cx, self.typeck, scrutinee).is_some() =>
+                if self.holds_awaited_scope(scrutinee) =>
             {
                 for arm in arms {
                     if discards_payload(self.cx, arm.pat) {
-                        self.report(arm.pat.span, "matched without being bound");
+                        self.report(arm.hir_id, arm.pat.span, "matched without being bound");
                     }
                 }
             }
             ExprKind::Let(let_expr)
                 if discards_payload(self.cx, let_expr.pat)
-                    && awaited_scope(self.cx, self.typeck, let_expr.init).is_some() =>
+                    && self.holds_awaited_scope(let_expr.init) =>
             {
-                self.report(let_expr.pat.span, "matched without being bound");
+                self.report(
+                    expr.hir_id,
+                    let_expr.pat.span,
+                    "matched without being bound",
+                );
             }
             ExprKind::MethodCall(segment, receiver, [], _)
                 if matches!(
                     segment.ident.as_str(),
                     "is_ok" | "is_err" | "is_some" | "is_none"
-                ) && awaited_scope(self.cx, self.typeck, receiver).is_some() =>
+                ) && self.holds_awaited_scope(receiver) =>
             {
-                self.report(expr.span, "reduced to a boolean");
+                self.report(expr.hir_id, expr.span, "reduced to a boolean");
             }
             _ => {}
         }

@@ -1,8 +1,8 @@
 extern crate rustc_hir;
 extern crate rustc_span;
 
-use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir::{self as hir, Expr, ExprKind};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
+use rustc_hir::{self as hir, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::Span;
 
@@ -44,10 +44,10 @@ dylint_linting::declare_late_lint! {
     "`AccessScope::allow_all()` used in a function that obtained a PDP-compiled scope (DE0710)"
 }
 
-fn allow_all_calls<'tcx>(cx: &LateContext<'tcx>, value: &'tcx Expr<'tcx>) -> Vec<Span> {
+fn allow_all_calls<'tcx>(cx: &LateContext<'tcx>, value: &'tcx Expr<'tcx>) -> Vec<(HirId, Span)> {
     struct Finder<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
-        spans: Vec<Span>,
+        calls: Vec<(HirId, Span)>,
     }
     impl<'tcx> hir::intravisit::Visitor<'tcx> for Finder<'_, 'tcx> {
         fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
@@ -65,17 +65,17 @@ fn allow_all_calls<'tcx>(cx: &LateContext<'tcx>, value: &'tcx Expr<'tcx>) -> Vec
                         .output(),
                 )
             {
-                self.spans.push(expr.span);
+                self.calls.push((expr.hir_id, expr.span));
             }
             hir::intravisit::walk_expr(self, expr);
         }
     }
     let mut finder = Finder {
         cx,
-        spans: Vec::new(),
+        calls: Vec::new(),
     };
     hir::intravisit::Visitor::visit_expr(&mut finder, value);
-    finder.spans
+    finder.calls
 }
 
 impl<'tcx> LateLintPass<'tcx> for De0710AllowAllAfterAuthorization {
@@ -87,16 +87,19 @@ impl<'tcx> LateLintPass<'tcx> for De0710AllowAllAfterAuthorization {
         let Some(authorization) = awaited_scope(cx, typeck, body.value) else {
             return;
         };
-        // Reading a row with `allow_all` *before* the PDP call is the documented
-        // prefetch pattern (load the row to build the PDP request); only an
-        // unrestricted read or write after the scope is in hand bypasses it.
-        for span in allow_all_calls(cx, body.value)
+        // Reading a row with `allow_all` *before* the PDP call — including inside
+        // the call's own arguments — is the documented prefetch pattern (load the
+        // row to build the PDP request); only an unrestricted read or write after
+        // the scope is in hand bypasses it.
+        for (hir_id, span) in allow_all_calls(cx, body.value)
             .into_iter()
-            .filter(|span| span.lo() > authorization.lo())
+            .filter(|(_, span)| span.lo() >= authorization.hi())
         {
-            span_lint_and_then(
+            // Emitted at the call so `#[expect]` on the enclosing statement applies.
+            span_lint_hir_and_then(
                 cx,
                 DE0710_ALLOW_ALL_AFTER_AUTHORIZATION,
+                hir_id,
                 span,
                 "`AccessScope::allow_all()` in a function that obtained a PDP-compiled scope (DE0710)",
                 |diag| {

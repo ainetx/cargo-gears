@@ -54,4 +54,12 @@ async fn boolean(id: u32) -> bool {
     authorize(id).await.is_ok()
 }
 
+async fn let_else(id: u32) -> bool {
+    // Should trigger DE0709 - discarded access scope: let-else without binding
+    let Ok(_) = authorize(id).await else {
+        return false;
+    };
+    true
+}
+
 fn main() {}
